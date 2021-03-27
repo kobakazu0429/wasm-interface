@@ -1,7 +1,7 @@
 import { FS } from "./FS";
 
-const readMode = 292 | 73;
-const writeMode = 146;
+const READ_MODE = 292 | 73;
+const WRITE_MODE = 146;
 
 export class FSNode {
   constructor(parent: FSNode | null, name: string, mode: number, rdev: number) {
@@ -34,17 +34,17 @@ export class FSNode {
   public link: any;
 
   public get read(): boolean {
-    return (this.mode & readMode) === readMode;
+    return (this.mode & READ_MODE) === READ_MODE;
   }
   public set read(val: boolean) {
-    val ? (this.mode |= readMode) : (this.mode &= ~readMode);
+    val ? (this.mode |= READ_MODE) : (this.mode &= ~READ_MODE);
   }
 
   public get write() {
-    return (this.mode & writeMode) === writeMode;
+    return (this.mode & WRITE_MODE) === WRITE_MODE;
   }
   public set write(val: boolean) {
-    val ? (this.mode |= writeMode) : (this.mode &= ~writeMode);
+    val ? (this.mode |= WRITE_MODE) : (this.mode &= ~WRITE_MODE);
   }
 
   public get isFolder() {
