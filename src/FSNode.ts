@@ -32,6 +32,7 @@ export class FSNode {
   public usedBytes: number;
   public timestamp: number;
   public link: any;
+  public name_next: string;
 
   public get read(): boolean {
     return (this.mode & READ_MODE) === READ_MODE;
