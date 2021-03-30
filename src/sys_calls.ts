@@ -2,6 +2,7 @@ import { HEAP, tempValue } from "./Global";
 import { UTF8ToString, lengthBytesUTF8, stringToUTF8 } from "./UTF8Decoder";
 import { FS } from "./FS";
 import { PATH } from "./PATH";
+import { logger } from "./utils";
 
 export class SYSCALLS {
   // static mappings = {};
@@ -190,9 +191,9 @@ export class SYSCALLS {
   }
 
   static get() {
-    console.log("SYSCALLS.varargs", SYSCALLS.varargs);
+    logger("SYSCALLS.varargs", SYSCALLS.varargs);
     SYSCALLS.varargs += 4;
-    console.log("SYSCALLS.varargs", SYSCALLS.varargs);
+    logger("SYSCALLS.varargs", SYSCALLS.varargs);
     const ret = HEAP.HEAP32[(SYSCALLS.varargs - 4) >> 2];
     return ret;
   }

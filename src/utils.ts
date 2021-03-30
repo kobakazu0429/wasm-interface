@@ -1,6 +1,6 @@
 import { readyPromiseReject } from "./CLangRunner";
 import { SYSTEM_STATUS } from "./system_status";
-import { err } from "./stdout";
+import { IO } from "./IO";
 
 /* eslint-disable no-empty */
 
@@ -31,11 +31,15 @@ export function getRandomDevice() {
 
 export function abort(what?: string) {
   what += "";
-  err(what);
+  IO.stderr(what);
   SYSTEM_STATUS.ABORT = true;
   SYSTEM_STATUS.EXITSTATUS = 1;
   what = "abort(" + what + "). Build with -s ASSERTIONS=1 for more info.";
   const e = new WebAssembly.RuntimeError();
   readyPromiseReject(e);
   throw e;
+}
+
+export function logger(...message: any) {
+  IO.stdout(...message);
 }

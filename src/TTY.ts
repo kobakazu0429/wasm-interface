@@ -5,7 +5,8 @@
 import { FS } from "./FS";
 import { intArrayFromString, UTF8ArrayToString } from "./UTF8Decoder";
 import { FSStream } from "./FSStream";
-import { out, err } from "./stdout";
+import { IO } from "./IO";
+import { logger } from "./utils";
 
 export interface StreamOps {
   open: (stream: FSStream) => void;
@@ -63,12 +64,12 @@ export class TTY {
       stream.seekable = false;
     },
     close(stream: FSStream) {
-      console.log(stream);
+      logger(stream);
       // @ts-ignore
       stream.tty.ops.flush(stream.tty);
     },
     flush(stream: FSStream) {
-      console.log(stream);
+      logger(stream);
       // @ts-ignore
       stream.tty.ops.flush(stream.tty);
     },
@@ -180,7 +181,7 @@ export class TTY {
     },
     put_char: function (tty: any, val: any) {
       if (val === null || val === 10) {
-        out(UTF8ArrayToString(tty.output, 0));
+        IO.stdout(UTF8ArrayToString(tty.output, 0));
         tty.output = [];
       } else {
         if (val != 0) tty.output.push(val);
@@ -188,7 +189,7 @@ export class TTY {
     },
     flush: function (tty: any) {
       if (tty.output && tty.output.length > 0) {
-        out(UTF8ArrayToString(tty.output, 0));
+        IO.stdout(UTF8ArrayToString(tty.output, 0));
         tty.output = [];
       }
     },
@@ -196,7 +197,7 @@ export class TTY {
   static default_tty1_ops = {
     put_char: function (tty: any, val: any) {
       if (val === null || val === 10) {
-        err(UTF8ArrayToString(tty.output, 0));
+        IO.stderr(UTF8ArrayToString(tty.output, 0));
         tty.output = [];
       } else {
         if (val != 0) tty.output.push(val);
@@ -204,7 +205,7 @@ export class TTY {
     },
     flush: function (tty: any) {
       if (tty.output && tty.output.length > 0) {
-        err(UTF8ArrayToString(tty.output, 0));
+        IO.stderr(UTF8ArrayToString(tty.output, 0));
         tty.output = [];
       }
     },

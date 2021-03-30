@@ -5,17 +5,13 @@
 import * as path from "path";
 import * as fs from "fs";
 
-function logger(...message: any) {
-  console.log(...message);
-}
-
 import { HEAP } from "./Global";
 import { SYSTEM_STATUS } from "./system_status";
 import { _fd_close, _fd_read, _fd_seek, _fd_write } from "./fd";
-import { err } from "./stdout";
+import { IO } from "./IO";
 import { FS } from "./FS";
 import { TTY } from "./TTY";
-import { abort } from "./utils";
+import { abort, logger } from "./utils";
 import { ExitStatus } from "./ExitStatus";
 
 // const _scriptDir = import.meta.url;
@@ -35,7 +31,7 @@ new Promise(function (resolve, reject) {
 });
 
 export function shell_read(filename: string, binary?: boolean) {
-  console.log(filename, binary);
+  IO.stdout(filename, binary);
   filename = path.normalize(filename);
   return fs.readFileSync(filename, binary ? null : "utf8");
 }
@@ -63,7 +59,7 @@ export function shell_read(filename: string, binary?: boolean) {
 // });
 
 const quit_ = function (status: number, reason: any) {
-  console.error(reason);
+  IO.stderr(reason);
   // process.exit(status);
 };
 
@@ -236,7 +232,7 @@ export class CLangRunner {
           return WebAssembly.instantiate(binary, info);
         })
         .then(receiver, function (reason) {
-          err("failed to asynchronously prepare wasm: " + reason);
+          IO.stderr("failed to asynchronously prepare wasm: " + reason);
           abort(reason);
         });
     }
@@ -291,7 +287,7 @@ export class CLangRunner {
         if (e && typeof e === "object" && e.stack) {
           toLog = [e, e.stack];
         }
-        err("exception thrown: " + toLog);
+        IO.stderr("exception thrown: " + toLog);
         quit_(1, e);
       }
     }

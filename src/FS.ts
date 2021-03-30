@@ -11,7 +11,7 @@ import { MEMFS } from "./MEMFS";
 import { PATH } from "./PATH";
 import { PATH_FS } from "./PATH_FS";
 import { shell_read } from "./CLangRunner";
-import { out, err } from "./stdout";
+import { IO } from "./IO";
 import { TTY } from "./TTY";
 import { StreamOps } from "./TTY";
 import {
@@ -20,7 +20,7 @@ import {
   stringToUTF8Array,
   UTF8ArrayToString,
 } from "./UTF8Decoder";
-import { getRandomDevice } from "./utils";
+import { getRandomDevice, logger } from "./utils";
 
 interface LookupPathOptions {
   follow_mount: boolean;
@@ -363,7 +363,7 @@ export const FS = {
     }
     FS.syncFSRequests++;
     if (FS.syncFSRequests > 1) {
-      err(
+      IO.stderr(
         "warning: " +
           FS.syncFSRequests +
           " FS.syncfs operations in flight at once, probably just doing extra work"
@@ -582,7 +582,7 @@ export const FS = {
         FS.trackingDelegate["willMovePath"](old_path, new_path);
       }
     } catch (e) {
-      err(
+      IO.stderr(
         "FS.trackingDelegate['willMovePath']('" +
           old_path +
           "', '" +
@@ -603,7 +603,7 @@ export const FS = {
       if (FS.trackingDelegate["onMovePath"])
         FS.trackingDelegate["onMovePath"](old_path, new_path);
     } catch (e) {
-      err(
+      IO.stderr(
         "FS.trackingDelegate['onMovePath']('" +
           old_path +
           "', '" +
@@ -633,7 +633,7 @@ export const FS = {
         FS.trackingDelegate["willDeletePath"](path);
       }
     } catch (e) {
-      err(
+      IO.stderr(
         "FS.trackingDelegate['willDeletePath']('" +
           path +
           "') threw an exception: " +
@@ -646,7 +646,7 @@ export const FS = {
       if (FS.trackingDelegate["onDeletePath"])
         FS.trackingDelegate["onDeletePath"](path);
     } catch (e) {
-      err(
+      IO.stderr(
         "FS.trackingDelegate['onDeletePath']('" +
           path +
           "') threw an exception: " +
@@ -682,7 +682,7 @@ export const FS = {
         FS.trackingDelegate["willDeletePath"](path);
       }
     } catch (e) {
-      err(
+      IO.stderr(
         "FS.trackingDelegate['willDeletePath']('" +
           path +
           "') threw an exception: " +
@@ -695,7 +695,7 @@ export const FS = {
       if (FS.trackingDelegate["onDeletePath"])
         FS.trackingDelegate["onDeletePath"](path);
     } catch (e) {
-      err(
+      IO.stderr(
         "FS.trackingDelegate['onDeletePath']('" +
           path +
           "') threw an exception: " +
@@ -908,7 +908,7 @@ export const FS = {
       if (!(path in FS.readFiles)) {
         // @ts-ignore
         FS.readFiles[path] = 1;
-        err("FS.trackingDelegate error on read file: " + path);
+        IO.stderr("FS.trackingDelegate error on read file: " + path);
       }
     }
     try {
@@ -923,7 +923,7 @@ export const FS = {
         FS.trackingDelegate["onOpenFile"](path, trackingFlags);
       }
     } catch (e) {
-      err(
+      IO.stderr(
         "FS.trackingDelegate['onOpenFile']('" +
           path +
           "', flags) threw an exception: " +
@@ -1048,7 +1048,7 @@ export const FS = {
       if (stream.path && FS.trackingDelegate["onWriteToFile"])
         FS.trackingDelegate["onWriteToFile"](stream.path);
     } catch (e) {
-      err(
+      IO.stderr(
         "FS.trackingDelegate['onWriteToFile']('" +
           stream.path +
           "') threw an exception: " +
@@ -1383,7 +1383,7 @@ export const FS = {
     canWrite: boolean,
     canOwn: boolean
   ) {
-    console.log("createDataFile");
+    logger("createDataFile");
 
     const path = name
       ? PATH.join2(
@@ -1483,6 +1483,8 @@ export const FS = {
     return FS.mkdev(path, mode, dev);
   },
   forceLoadFile: function (obj: any) {
+    logger("forceLoadFile");
+
     if (obj.isDevice || obj.isFolder || obj.link || obj.contents) return true;
     if (typeof XMLHttpRequest !== "undefined") {
       throw new Error(
@@ -1581,7 +1583,7 @@ export const FS = {
         chunkSize = datalength = 1;
         datalength = this.getter(0).length;
         chunkSize = datalength;
-        out(
+        IO.stdout(
           "LazyFiles on gzip forces download of the whole file when length is accessed"
         );
       }
@@ -1741,7 +1743,7 @@ export const FS = {
       return onerror(e);
     }
     openRequest.onupgradeneeded = function openRequest_onupgradeneeded() {
-      out("creating db");
+      IO.stdout("creating db");
       var db = openRequest.result;
       db.createObjectStore(FS.DB_STORE_NAME);
     };

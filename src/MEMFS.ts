@@ -3,7 +3,7 @@ import { HEAP } from "./Global";
 import { FS } from "./FS";
 import { FSNode } from "./FSNode";
 import { FSStream } from "./FSStream";
-import { abort } from "./utils";
+import { abort, logger } from "./utils";
 
 const STACK_ALIGN = 16;
 
@@ -15,7 +15,7 @@ function alignMemory(size: number, factor: number) {
 function mmapAlloc(size: number) {
   const alignedSize = alignMemory(size, 16384);
   const ptr = abort();
-  console.log("ptr::", ptr);
+  logger("ptr::", ptr);
 
   // @ts-ignore
   while (size < alignedSize) HEAP.HEAP8[ptr + size++] = 0;
