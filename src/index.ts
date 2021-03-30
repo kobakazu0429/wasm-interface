@@ -1,8 +1,13 @@
 import { CLangRunner } from "./CLangRunner";
+import { IO } from "./IO";
 
-// export type Key = "stdout" | "stderr";
+// export type PublicKey = "stdout" | "stderr";
+// export type PrivateKey = "initialized";
+// export type Key = PublicKey | PrivateKey;
 // export type InternalModule = { [k in Key]: (args: any) => void } & {
 //   initialized: boolean;
+// } & {
+//   asmLibraryArg: { key: string; value: string }[];
 // };
 
 export type Key = string;
@@ -11,25 +16,29 @@ export type InternalModule = { [k in Key]: (args: any) => void } & {
   asmLibraryArg: Array<Record<string, string>>;
 };
 
-export const waface = () => {
-  const internalModule = { initialized: false } as InternalModule;
-  const runner = new CLangRunner();
+export class Waface {
+  private internalModule = { initialized: false } as InternalModule;
+  private runner = new CLangRunner();
 
-  return {
-    set: (key: Key | string, value: any) => {
-      internalModule[key] = value;
-    },
-    init: async (wasmBinary: Buffer) => {
-      runner.createWasm(wasmBinary, internalModule["asmLibraryArg"]);
-      runner.preRun();
-    },
-    run: async () => {
-      if (internalModule.initialized === false) {
-        runner.run();
-        internalModule.initialized = true;
-      } else {
-        runner.callMain();
-      }
-    },
-  };
-};
+  public async init(wasmBinary: Buffer) {
+    if (this.internalModule.stdout) IO.stdout = this.internalModule.stdout;
+    if (this.internalModule.stderr) IO.stderr = this.internalModule.stderr;
+    if (this.internalModule.stdin) IO.stdin = this.internalModule.stdin;
+
+    this.runner.createWasm(wasmBinary, this.internalModule["asmLibraryArg"]);
+    this.runner.preRun();
+  }
+
+  public async run() {
+    if (this.internalModule.initialized === false) {
+      this.runner.run();
+      this.internalModule.initialized = true;
+    } else {
+      this.runner.callMain();
+    }
+  }
+
+  public set(key: Key, value: any) {
+    this.internalModule[key] = value;
+  }
+}
