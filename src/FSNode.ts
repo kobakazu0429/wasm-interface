@@ -21,8 +21,8 @@ export class FSNode {
 
   public parent: FSNode;
   public mount: any;
-  public mounted: any;
-  public id: any;
+  public mounted: null | boolean;
+  public id: number;
   public name: string;
   public mode: number;
   public node_ops: any;

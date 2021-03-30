@@ -7,11 +7,11 @@ export class ErrnoError {
     this.setErrno(errno);
   }
 
-  public stack: string;
+  public stack?: string;
 
-  private node: FSNode;
+  private node: FSNode | undefined;
   private message: string;
-  private errno: number;
+  private errno?: number;
 
   private setErrno(errno: number) {
     this.errno = errno;
