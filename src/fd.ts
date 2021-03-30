@@ -4,7 +4,7 @@
 import { FS } from "./FS";
 import { HEAP, tempValue } from "./Global";
 import { SYSCALLS } from "./sys_calls";
-import { abort } from "./runner";
+import { abort } from "./utils";
 
 export function _fd_write(
   fd: number,
@@ -33,6 +33,7 @@ export function _fd_close(fd: number) {
     return e.errno;
   }
 }
+
 export function _fd_read(
   fd: number,
   iov: number,
@@ -49,6 +50,7 @@ export function _fd_read(
     return e.errno;
   }
 }
+
 export function _fd_seek(
   fd: number,
   offset_low: number,

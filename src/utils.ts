@@ -1,5 +1,8 @@
+import { readyPromiseReject } from "./CLangRunner";
+import { SYSTEM_STATUS } from "./system_status";
+import { err } from "./stdout";
+
 /* eslint-disable no-empty */
-import { abort } from "./runner";
 
 export function getRandomDevice() {
   if (
@@ -24,4 +27,15 @@ export function getRandomDevice() {
   return function () {
     abort("randomDevice");
   };
+}
+
+export function abort(what?: string) {
+  what += "";
+  err(what);
+  SYSTEM_STATUS.ABORT = true;
+  SYSTEM_STATUS.EXITSTATUS = 1;
+  what = "abort(" + what + "). Build with -s ASSERTIONS=1 for more info.";
+  const e = new WebAssembly.RuntimeError();
+  readyPromiseReject(e);
+  throw e;
 }
