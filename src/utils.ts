@@ -41,5 +41,5 @@ export function abort(what?: string) {
 }
 
 export function logger(...message: any) {
-  IO.stdout(...message);
+  IO.debug(...message);
 }

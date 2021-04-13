@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-empty-function */
 
-import { StreamOps, Tty } from "./TTY";
-import { FSNode } from "./FSNode";
+import type { StreamOps, Tty } from "./TTY";
+import type { FSNode } from "./FSNode";
 
 export class FSStream {
   constructor() {}

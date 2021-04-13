@@ -4,7 +4,7 @@
 
 import { FS } from "./FS";
 import { intArrayFromString, UTF8ArrayToString } from "./UTF8Decoder";
-import { FSStream } from "./FSStream";
+import type { FSStream } from "./FSStream";
 import { IO } from "./IO";
 import { logger } from "./utils";
 

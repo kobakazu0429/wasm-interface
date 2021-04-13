@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/ban-ts-comment */
 import { HEAP } from "./Global";
 import { FS } from "./FS";
-import { FSNode } from "./FSNode";
-import { FSStream } from "./FSStream";
+import type { FSNode } from "./FSNode";
+import type { FSStream } from "./FSStream";
 import { abort, logger } from "./utils";
 
 const STACK_ALIGN = 16;

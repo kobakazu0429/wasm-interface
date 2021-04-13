@@ -1,4 +1,4 @@
-import { FSNode } from "./FSNode";
+import type { FSNode } from "./FSNode";
 
 export class ErrnoError {
   constructor(errno: number, node?: FSNode) {

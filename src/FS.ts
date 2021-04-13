@@ -13,7 +13,7 @@ import { PATH_FS } from "./PATH_FS";
 import { shell_read } from "./CLangRunner";
 import { IO } from "./IO";
 import { TTY } from "./TTY";
-import { StreamOps } from "./TTY";
+import type { StreamOps } from "./TTY";
 import {
   intArrayFromString,
   lengthBytesUTF8,
@@ -401,12 +401,16 @@ export const FS = {
     var pseudo = !mountpoint;
     var node;
     if (root && FS.root) {
+      console.log("1");
+
       throw new FS.ErrnoError(10);
     } else if (!root && !pseudo) {
       var lookup = FS.lookupPath(mountpoint, { follow_mount: false });
       mountpoint = lookup.path;
       node = lookup.node;
       if (FS.isMountpoint(node)) {
+        console.log("2");
+
         throw new FS.ErrnoError(10);
       }
       if (!FS.isDir(node.mode)) {
@@ -569,6 +573,8 @@ export const FS = {
       throw new FS.ErrnoError(63);
     }
     if (FS.isMountpoint(old_node) || (new_node && FS.isMountpoint(new_node))) {
+      console.log(3);
+
       throw new FS.ErrnoError(10);
     }
     if (new_dir !== old_dir) {
@@ -626,6 +632,8 @@ export const FS = {
       throw new FS.ErrnoError(63);
     }
     if (FS.isMountpoint(node)) {
+      console.log(4);
+
       throw new FS.ErrnoError(10);
     }
     try {
@@ -675,6 +683,8 @@ export const FS = {
       throw new FS.ErrnoError(63);
     }
     if (FS.isMountpoint(node)) {
+      console.log(5);
+
       throw new FS.ErrnoError(10);
     }
     try {
@@ -1583,7 +1593,7 @@ export const FS = {
         chunkSize = datalength = 1;
         datalength = this.getter(0).length;
         chunkSize = datalength;
-        IO.stdout(
+        IO.debug(
           "LazyFiles on gzip forces download of the whole file when length is accessed"
         );
       }
@@ -1743,7 +1753,7 @@ export const FS = {
       return onerror(e);
     }
     openRequest.onupgradeneeded = function openRequest_onupgradeneeded() {
-      IO.stdout("creating db");
+      IO.debug("creating db");
       var db = openRequest.result;
       db.createObjectStore(FS.DB_STORE_NAME);
     };
