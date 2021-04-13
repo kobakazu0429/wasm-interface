@@ -1,7 +1,7 @@
 import * as path from "path";
 import * as fs from "fs/promises";
 
-import { Waface } from "../src/index";
+import { Wasface } from "../src/index";
 
 export async function demo() {
   const wasmPath = path.join(__dirname, "scanf.wasm");
@@ -16,7 +16,7 @@ export async function demo() {
     { key: "a", value: "_fd_write" },
   ];
 
-  const app = new Waface();
+  const app = new Wasface();
   app.set("asmLibraryArg", asmLibraryArgs);
 
   await app.init(wasm);

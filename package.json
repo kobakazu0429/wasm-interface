@@ -1,7 +1,7 @@
 {
   "name": "wasm-interface",
   "version": "1.0.0",
-  "main": "index.js",
+  "main": "src/index.ts",
   "repository": "ssh://git@github.com/kobakazu0429/wasm-interface.git",
   "author": "kobakakzu0429 <kobakazu10@gmail.com>",
   "license": "MIT",

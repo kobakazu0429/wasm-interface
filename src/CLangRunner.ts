@@ -2,8 +2,8 @@
 /* eslint-disable @typescript-eslint/member-ordering */
 /* eslint-disable prefer-rest-params */
 /* eslint-disable @typescript-eslint/ban-ts-comment */
-import * as path from "path";
-import * as fs from "fs";
+// import * as path from "path";
+// import * as fs from "fs";
 
 import { HEAP } from "./Global";
 import { SYSTEM_STATUS } from "./system_status";
@@ -13,6 +13,7 @@ import { FS } from "./FS";
 import { TTY } from "./TTY";
 import { abort, logger } from "./utils";
 import { ExitStatus } from "./ExitStatus";
+import { stringToUTF8, UTF8ToString } from "./UTF8Decoder";
 
 // const _scriptDir = import.meta.url;
 // const _scriptDir = "file:///Users/kazu/workspace2/foo/src/mjs.mjs";
@@ -23,6 +24,8 @@ import { ExitStatus } from "./ExitStatus";
 //   return scriptDirectory + _path;
 // }
 
+export type ArgType = "string" | "boolean" | "number";
+
 export let readyPromiseResolve: (value: unknown) => void;
 export let readyPromiseReject: (reason?: any) => void;
 new Promise(function (resolve, reject) {
@@ -31,9 +34,9 @@ new Promise(function (resolve, reject) {
 });
 
 export function shell_read(filename: string, binary?: boolean) {
-  IO.stdout(filename, binary);
-  filename = path.normalize(filename);
-  return fs.readFileSync(filename, binary ? null : "utf8");
+  IO.debug(filename, binary);
+  // filename = path.normalize(filename);
+  // return fs.readFileSync(filename, binary ? null : "utf8");
 }
 
 // function readBinary(filename: string) {
@@ -51,16 +54,20 @@ export function shell_read(filename: string, binary?: boolean) {
 //   }
 // }
 
-// process["on"]("unhandledRejection", abort);
-// process["on"]("uncaughtException", function (ex) {
-//   if (!(ex instanceof ExitStatus)) {
-//     throw ex;
-//   }
-// });
+// declare const process: any;
+
+// if (process && process.on) {
+//   process.on("unhandledRejection", abort);
+//   process.on("uncaughtException", function (ex: any) {
+//     if (!(ex instanceof ExitStatus)) {
+//       throw ex;
+//     }
+//   });
+// }
 
 const quit_ = function (status: number, reason: any) {
   IO.stderr(reason);
-  // process.exit(status);
+  // if (process.exit) process.exit(status);
 };
 
 function getBinaryPromise(wasmBinary: Uint8Array) {
@@ -73,12 +80,7 @@ function getBinaryPromise(wasmBinary: Uint8Array) {
   });
 }
 
-let asmLibraryArgLastKeyAsAscii = 0;
-
-interface IModule {
-  asm: any;
-  _main: any;
-}
+type IModule = Record<"asm" | "_main" | string, any>;
 
 export class CLangRunner {
   private noExitRuntime = true;
@@ -180,9 +182,10 @@ export class CLangRunner {
     FS.staticInit();
   }
 
-  public createWasm(
+  public async createWasm(
     wasmBinary: Uint8Array,
-    asmLibraryArgKeys: Array<Record<string, string>>
+    asmLibraryArgKeys: Array<Record<string, string>>,
+    wasmRuntime: Record<"wasmMemory" | "wasmTable", string>
   ) {
     this.tmp_run();
     const mapping: Record<string, (...args: any[]) => any> = {
@@ -196,13 +199,10 @@ export class CLangRunner {
 
     const asmLibraryArg: Record<string, (...args: any[]) => any> = {};
     asmLibraryArgKeys.forEach((asmLibraryArgKey) => {
+      // @ts-ignore
       asmLibraryArg[asmLibraryArgKey.key] = mapping[asmLibraryArgKey.value];
     });
     logger("asmLibraryArg: ", asmLibraryArg);
-    asmLibraryArgLastKeyAsAscii = Object.keys(asmLibraryArg)
-      .sort()
-      .pop()
-      .charCodeAt(0);
 
     const info = { a: asmLibraryArg };
     const receiveInstance = (instance: WebAssembly.Instance) => {
@@ -210,15 +210,9 @@ export class CLangRunner {
       this.Module["asm"] = exports;
       logger(`this.Module["asm"]: `, this.Module["asm"]);
 
-      // @ts-ignore
-      this.wasmMemory = this.Module["asm"][
-        String.fromCharCode(asmLibraryArgLastKeyAsAscii + 1)
-      ];
+      this.wasmMemory = this.Module["asm"][wasmRuntime.wasmMemory];
       this.updateGlobalBufferAndViews(this.Module, this.wasmMemory!.buffer);
-      // @ts-ignore
-      this.wasmTable = this.Module["asm"][
-        String.fromCharCode(asmLibraryArgLastKeyAsAscii + 4)
-      ];
+      this.wasmTable = this.Module["asm"][wasmRuntime.wasmTable];
       this.removeRunDependency();
     };
     this.addRunDependency();
@@ -237,23 +231,24 @@ export class CLangRunner {
         });
     }
 
-    instantiateArrayBuffer(receiveInstantiatedSource).catch(readyPromiseReject);
+    await instantiateArrayBuffer(receiveInstantiatedSource).catch(
+      readyPromiseReject
+    );
     logger("createWasm finished");
-    return {};
   }
 
-  public preRun() {
-    this.___wasm_call_ctors = () =>
-      this.Module["asm"][
-        String.fromCharCode(asmLibraryArgLastKeyAsAscii + 2)
-        // @ts-ignore
-      ].apply(null, arguments);
+  public preRun(
+    caller: Record<"___wasm_call_ctors" | "_main" | string, string>
+  ) {
+    this.___wasm_call_ctors = (...args: any[]) =>
+      this.Module["asm"][caller["___wasm_call_ctors"]](...args);
 
-    this.Module["_main"] = () =>
-      this.Module["asm"][
-        String.fromCharCode(asmLibraryArgLastKeyAsAscii + 3)
-        // @ts-ignore
-      ].apply(null, arguments);
+    for (const key in caller) {
+      if (key !== "___wasm_call_ctors") {
+        this.Module[key] = (...args: any[]) =>
+          this.Module["asm"][caller[key]](...args);
+      }
+    }
 
     this.__ATINIT__.push({
       func: () => {
@@ -304,5 +299,68 @@ export class CLangRunner {
     this.initRuntime();
     readyPromiseResolve(this.Module);
     this.callMain();
+  }
+
+  public writeArrayToMemory(array: ArrayLike<number>, buffer: number) {
+    HEAP.HEAP8.set(array, buffer);
+  }
+
+  public ccall(
+    ident: string,
+    returnType: ArgType,
+    argTypes: Array<ArgType>,
+    args: any[]
+  ) {
+    const toC = {
+      string: (str: string) => {
+        const len = (str.length << 2) + 1;
+        const ret = this.Module.stackAlloc(len);
+        stringToUTF8(str, ret, len);
+        return ret;
+      },
+      array: (arr: any[]) => {
+        const ret = this.Module.stackAlloc(arr.length);
+        this.writeArrayToMemory(arr, ret);
+        return ret;
+      },
+    };
+    function convertReturnValue(ret: number) {
+      if (returnType === "string") return UTF8ToString(ret);
+      if (returnType === "boolean") return Boolean(ret);
+      return ret;
+    }
+    const cArgs = [];
+    let stack = 0;
+
+    if (args) {
+      for (let i = 0; i < args.length; i++) {
+        // @ts-ignore
+        const converter = toC[argTypes[i]];
+        if (converter) {
+          if (stack === 0) stack = this.Module.stackSave();
+          cArgs[i] = converter(args[i]);
+        } else {
+          cArgs[i] = args[i];
+        }
+      }
+    }
+
+    let ret = this.Module[ident](...cArgs);
+    ret = convertReturnValue(ret);
+    if (stack !== 0) this.Module.stackRestore(stack);
+    return ret;
+  }
+
+  public cwrap(
+    ident: string,
+    returnType: ArgType,
+    argTypes: Array<ArgType> = []
+  ) {
+    const numericArgs = argTypes.every((type) => type === "number");
+    if (returnType !== "string" && numericArgs) {
+      return (...args: any[]) => this.Module[ident](...args);
+    } else {
+      return (...args: any[]) => this.ccall(ident, returnType, argTypes, args);
+    }
   }
 }
