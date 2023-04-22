@@ -2,6 +2,8 @@
 /* eslint-disable @typescript-eslint/no-empty-function */
 // import * as nodeFS from "fs";
 
+// import debounce from "lodash/debounce";
+
 import { FS } from "./FS";
 import { intArrayFromString, UTF8ArrayToString } from "./UTF8Decoder";
 import type { FSStream } from "./FSStream";
@@ -27,7 +29,7 @@ export interface StreamOps {
     _pos: number,
     _canOwn: boolean
   ) => number;
-  allocate: (...args: any[]) => any;
+  allocate?: (...args: any[]) => any;
   ioctl: any;
   llseek: any;
   mmap: any;
@@ -35,27 +37,35 @@ export interface StreamOps {
 }
 
 interface DefaultTty1Ops {
-  put_char: (tty: any, val: any) => void;
-  flush: (tty: any) => void;
+  put_char: (tty: Tty, val: number) => void;
+  flush: (tty: Tty) => void;
 }
 
 interface DefaultTtyOps extends DefaultTty1Ops {
-  get_char: (tty: any) => any;
+  get_char: (tty: Tty) => any;
 }
 
 type Ops = StreamOps | DefaultTtyOps | DefaultTty1Ops;
 
 export interface Tty {
-  input: any[];
-  output: any[];
+  input: number[];
+  output: number[];
   ops: Ops;
+}
+
+function hasGetChar(ops: Ops): ops is DefaultTtyOps {
+  return Object.prototype.hasOwnProperty.call(ops, "get_char");
+}
+
+function hasPutChar(ops: Ops): ops is DefaultTtyOps | DefaultTty1Ops {
+  return Object.prototype.hasOwnProperty.call(ops, "put_char");
 }
 
 export class TTY {
   static ttys: Tty[] = [];
 
   static stream_ops = {
-    open(stream: FSStream) {
+    open(stream) {
       const tty = TTY.ttys[stream.node.rdev];
       if (!tty) {
         throw new FS.ErrnoError(43);
@@ -63,33 +73,51 @@ export class TTY {
       stream.tty = tty;
       stream.seekable = false;
     },
-    close(stream: FSStream) {
+    close(stream) {
       logger(stream);
       // @ts-ignore
       stream.tty.ops.flush(stream.tty);
     },
-    flush(stream: FSStream) {
+    flush(stream) {
       logger(stream);
-      // @ts-ignore
+      // @ts-expect-error
       stream.tty.ops.flush(stream.tty);
     },
-    read(
-      stream: FSStream,
-      buffer: any,
-      offset: number,
-      length: number,
-      _pos: number
-    ) {
-      // @ts-ignore
-      if (!stream.tty || !stream.tty.ops.get_char) {
+    read: (stream, buffer, offset, length, _pos) => {
+      if (!stream.tty || !hasGetChar(stream.tty.ops)) {
         throw new FS.ErrnoError(60);
       }
       let bytesRead = 0;
+
+      function* makeRangeIterator(start = 0, end = 100, step = 1) {
+        let iterationCount = 0;
+        for (let i = start; i < end; i += step) {
+          iterationCount++;
+          yield i;
+        }
+        return iterationCount;
+      }
+
+      // for await (const i of makeRangeIterator(0, length)) {
+      //   let result;
+      //   try {
+      //     result = await stream.tty.ops.get_char(stream.tty);
+      //     console.log("1---", result);
+      //   } catch (e) {
+      //     throw new FS.ErrnoError(29);
+      //   }
+      //   if (result === undefined && bytesRead === 0) {
+      //     throw new FS.ErrnoError(6);
+      //   }
+      //   if (result === null || result === undefined) break;
+      //   bytesRead++;
+      //   buffer[offset + i] = result;
+      // }
       for (let i = 0; i < length; i++) {
         let result;
         try {
-          // @ts-ignore
           result = stream.tty.ops.get_char(stream.tty);
+          // console.log("1---", result);
         } catch (e) {
           throw new FS.ErrnoError(29);
         }
@@ -103,24 +131,16 @@ export class TTY {
       if (bytesRead) {
         stream.node.timestamp = Date.now();
       }
+      // console.log("2---");
       return bytesRead;
     },
-    write: function (
-      stream: FSStream,
-      buffer: any,
-      offset: number,
-      length: number,
-      _pos?: number,
-      _canOwn?: boolean
-    ) {
-      // @ts-ignore
-      if (!stream.tty || !stream.tty.ops.put_char) {
+    write: function (stream, buffer, offset, length, _pos, _canOwn) {
+      if (!stream.tty || !hasPutChar(stream.tty.ops)) {
         throw new FS.ErrnoError(60);
       }
       let i = 0;
       try {
         for (; i < length; i++) {
-          // @ts-ignore
           stream.tty.ops.put_char(stream.tty, buffer[offset + i]);
         }
       } catch (e) {
@@ -132,80 +152,66 @@ export class TTY {
       return i;
     },
   } as StreamOps;
-  static default_tty_ops = {
-    get_char: function (tty: any) {
+
+  static default_tty_ops: DefaultTtyOps = {
+    get_char: function (tty) {
+      // eslint-disable-next-line no-async-promise-executor
+      // return new Promise(async (resolve) => {
+      // console.log("called");
+      // console.log("123------", IO.stdin);
       if (!tty.input.length) {
         let result = null;
-        // if (/*ENVIRONMENT_IS_NODE*/ true) {
-        //   let BUFSIZE = 256;
-        //   let buf = Buffer.alloc ? Buffer.alloc(BUFSIZE) : new Buffer(BUFSIZE);
-        //   let bytesRead = 0;
-        //   try {
-        //     bytesRead = nodeFS.readSync(
-        //       process.stdin.fd,
-        //       buf,
-        //       0,
-        //       BUFSIZE,
-        //       null
-        //     );
-        //   } catch (e) {
-        //     if (e.toString().indexOf("EOF") != -1) bytesRead = 0;
-        //     else throw e;
+        // console.log("123------", IO.stdin.read());
+        // while (!IO.stdin.read().endsWith("\n"));
+        // const intvl = setInterval(function () {
+        //   // console.log(IO.stdin.read());
+        //   const a = IO.stdin.read();
+        //   if (a.endsWith("\n")) {
+        //     clearInterval(intvl);
+        //     result = a;
         //   }
-        //   if (bytesRead > 0) {
-        //     result = buf.slice(0, bytesRead).toString("utf-8");
-        //   } else {
-        //     result = null;
-        //   }
-        // } else if (
-        //   typeof window != "undefined" &&
-        //   typeof window.prompt == "function"
-        // ) {
-        //   result = window.prompt("Input: ");
-        //   if (result !== null) {
-        //     result += "\n";
-        //   }
-        // } else if (typeof readline == "function") {
-        //   result = readline();
-        //   if (result !== null) {
-        //     result += "\n";
-        //   }
-        // }
-        // if (!result) {
-        //   return null;
-        // }
+        // }, 100);
+        // await new Promise((r: (a: void) => void) =>
+        //   setTimeout(() => {
+        //     result = "123\n";
+        //     r();
+        //   }, 100)
+        // );
         result = "123\n";
         tty.input = intArrayFromString(result, true);
       }
-      return tty.input.shift();
+      //   resolve(tty.input.shift());
+      // });
+      tty.input.shift();
     },
-    put_char: function (tty: any, val: any) {
+    put_char: function (tty, val) {
       if (val === null || val === 10) {
-        IO.stdout(UTF8ArrayToString(tty.output, 0));
+        IO.stdout(UTF8ArrayToString(new Uint8Array(tty.output), 0));
         tty.output = [];
       } else {
         if (val != 0) tty.output.push(val);
       }
     },
-    flush: function (tty: any) {
+    flush: function (tty) {
       if (tty.output && tty.output.length > 0) {
-        IO.stdout(UTF8ArrayToString(tty.output, 0));
+        IO.stdout(UTF8ArrayToString(new Uint8Array(tty.output), 0));
         tty.output = [];
       }
     },
   };
-  static default_tty1_ops = {
-    put_char: function (tty: any, val: any) {
+
+  static default_tty1_ops: DefaultTty1Ops = {
+    put_char: function (tty, val: any) {
       if (val === null || val === 10) {
-        IO.stderr(UTF8ArrayToString(tty.output, 0));
+        IO.stderr(UTF8ArrayToString(new Uint8Array(tty.output), 0));
         tty.output = [];
       } else {
         if (val != 0) tty.output.push(val);
       }
     },
-    flush: function (tty: any) {
+    flush: function (tty) {
       if (tty.output && tty.output.length > 0) {
-        IO.stderr(UTF8ArrayToString(tty.output, 0));
+        IO.stderr(UTF8ArrayToString(new Uint8Array(tty.output), 0));
         tty.output = [];
       }
     },
@@ -215,7 +221,11 @@ export class TTY {
   static shutdown() {}
 
   static register(dev: number, ops: Ops) {
-    TTY.ttys[dev] = { input: [], output: [], ops: ops };
+    TTY.ttys[dev] = {
+      input: [],
+      output: [],
+      ops: ops,
+    };
     FS.registerDevice(dev, TTY.stream_ops);
   }
 }

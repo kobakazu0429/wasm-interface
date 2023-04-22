@@ -193,7 +193,13 @@ export class CLangRunner {
       _fd_seek: _fd_seek,
       _emscripten_memcpy_big: this._emscripten_memcpy_big,
       _emscripten_resize_heap: this._emscripten_resize_heap,
-      _fd_read: _fd_read,
+      _fd_read: (...args: any[]) => {
+        // console.log("11123");
+        // console.log(args);
+
+        // @ts-ignore
+        return _fd_read(...args, this.wasmMemory);
+      },
       _fd_close: _fd_close,
     };
 

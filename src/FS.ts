@@ -1502,6 +1502,7 @@ export const FS = {
       );
     } else {
       try {
+        // @ts-ignore
         obj.contents = intArrayFromString(shell_read(obj.url), true);
         obj.usedBytes = obj.contents.length;
       } catch (e) {
